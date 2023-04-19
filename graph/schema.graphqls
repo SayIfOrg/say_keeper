@@ -1,0 +1,32 @@
+# GraphQL schema
+
+type User {
+  id: ID!
+  name: String!
+}
+
+type Comment {
+    id: ID!
+    userID: ID!
+    replyToID: ID
+    replyTo: Comment
+    replies: [Comment]!
+    content: String!
+    agent: String!
+}
+
+type Query {
+  users: [User]!
+  comments: [Comment]!
+}
+
+input NewComment {
+    userID: ID!
+    replyToID: ID
+    content: String!
+    agent: String!
+}
+
+type Mutation {
+  createComment(comment: NewComment!): Comment!
+}
