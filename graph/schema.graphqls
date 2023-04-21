@@ -30,3 +30,7 @@ input NewComment {
 type Mutation {
   createComment(comment: NewComment!): Comment!
 }
+
+type Subscription {
+  latestComment: Comment!
+}

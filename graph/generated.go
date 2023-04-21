@@ -8,6 +8,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"io"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -40,6 +41,7 @@ type ResolverRoot interface {
 	Comment() CommentResolver
 	Mutation() MutationResolver
 	Query() QueryResolver
+	Subscription() SubscriptionResolver
 }
 
 type DirectiveRoot struct {
@@ -65,6 +67,10 @@ type ComplexityRoot struct {
 		Users    func(childComplexity int) int
 	}
 
+	Subscription struct {
+		LatestComment func(childComplexity int) int
+	}
+
 	User struct {
 		ID   func(childComplexity int) int
 		Name func(childComplexity int) int
@@ -81,6 +87,9 @@ type MutationResolver interface {
 type QueryResolver interface {
 	Users(ctx context.Context) ([]*gmodel.User, error)
 	Comments(ctx context.Context) ([]*gmodel.Comment, error)
+}
+type SubscriptionResolver interface {
+	LatestComment(ctx context.Context) (<-chan *gmodel.Comment, error)
 }
 
 type executableSchema struct {
@@ -173,6 +182,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.Users(childComplexity), true
 
+	case "Subscription.latestComment":
+		if e.complexity.Subscription.LatestComment == nil {
+			break
+		}
+
+		return e.complexity.Subscription.LatestComment(childComplexity), true
+
 	case "User.id":
 		if e.complexity.User.ID == nil {
 			break
@@ -224,6 +240,23 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 			ctx = graphql.WithUnmarshalerMap(ctx, inputUnmarshalMap)
 			data := ec._Mutation(ctx, rc.Operation.SelectionSet)
 			var buf bytes.Buffer
+			data.MarshalGQL(&buf)
+
+			return &graphql.Response{
+				Data: buf.Bytes(),
+			}
+		}
+	case ast.Subscription:
+		next := ec._Subscription(ctx, rc.Operation.SelectionSet)
+
+		var buf bytes.Buffer
+		return func(ctx context.Context) *graphql.Response {
+			buf.Reset()
+			data := next(ctx)
+
+			if data == nil {
+				return nil
+			}
 			data.MarshalGQL(&buf)
 
 			return &graphql.Response{
@@ -977,6 +1010,79 @@ func (ec *executionContext) fieldContext_Query___schema(ctx context.Context, fie
 				return ec.fieldContext___Schema_directives(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type __Schema", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Subscription_latestComment(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_latestComment(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().LatestComment(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *gmodel.Comment):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNComment2ᚖgithubᚗcomᚋSayIfOrgᚋsay_keeperᚋgraphᚋgmodelᚐComment(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_latestComment(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Comment_id(ctx, field)
+			case "userID":
+				return ec.fieldContext_Comment_userID(ctx, field)
+			case "replyToID":
+				return ec.fieldContext_Comment_replyToID(ctx, field)
+			case "replyTo":
+				return ec.fieldContext_Comment_replyTo(ctx, field)
+			case "replies":
+				return ec.fieldContext_Comment_replies(ctx, field)
+			case "content":
+				return ec.fieldContext_Comment_content(ctx, field)
+			case "agent":
+				return ec.fieldContext_Comment_agent(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Comment", field.Name)
 		},
 	}
 	return fc, nil
@@ -3101,6 +3207,26 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 	}
 	out.Dispatch()
 	return out
+}
+
+var subscriptionImplementors = []string{"Subscription"}
+
+func (ec *executionContext) _Subscription(ctx context.Context, sel ast.SelectionSet) func(ctx context.Context) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, subscriptionImplementors)
+	ctx = graphql.WithFieldContext(ctx, &graphql.FieldContext{
+		Object: "Subscription",
+	})
+	if len(fields) != 1 {
+		ec.Errorf(ctx, "must subscribe to exactly one stream")
+		return nil
+	}
+
+	switch fields[0].Name {
+	case "latestComment":
+		return ec._Subscription_latestComment(ctx, fields[0])
+	default:
+		panic("unknown field " + strconv.Quote(fields[0].Name))
+	}
 }
 
 var userImplementors = []string{"User"}

@@ -6,7 +6,10 @@ package graph
 
 import (
 	"context"
+	"fmt"
+	"math/rand"
 	"strconv"
+	"time"
 
 	"github.com/SayIfOrg/say_keeper/graph/gmodel"
 	"github.com/SayIfOrg/say_keeper/models"
@@ -120,6 +123,57 @@ func (r *queryResolver) Comments(_ context.Context) ([]*gmodel.Comment, error) {
 	return gComments, nil
 }
 
+// LatestComment is the resolver for the latestComment field.
+func (r *subscriptionResolver) LatestComment(_ context.Context) (<-chan *gmodel.Comment, error) {
+	// This is dummy for now
+
+	ch := make(chan *gmodel.Comment)
+
+	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	rand.Seed(time.Now().UnixNano())
+
+	// TODO handle channels in a central place outside of `schema.resolvers.go`
+	go func() {
+		for {
+			time.Sleep(5 * time.Second)
+			fmt.Println("ping")
+
+			n := rand.Intn(100) + 1
+			b := make([]byte, n)
+			for i := range b {
+				randIndex := rand.Intn(len(letters))
+				b[i] = letters[randIndex]
+			}
+
+			currentTime := time.Now()
+			t := &gmodel.Comment{
+				ID:        strconv.Itoa(int(currentTime.Unix())),
+				UserID:    "5",
+				ReplyToID: nil,
+				//ReplyTo:   nil,
+				//Replies:   nil,
+				Content: string(b),
+				Agent:   "telegram",
+			}
+
+			// The channel may have gotten closed due to the client disconnecting.
+			// To not have our Goroutine block or panic, we do the send in a select block.
+			// This will jump to the default case if the channel is closed.
+			select {
+			case ch <- t: // This is the actual send.
+				// Our message went through, do nothing
+			default: // This is run when our send does not work.
+				fmt.Println("Channel closed.")
+				// You can handle any deregistration of the channel here.
+				return // We'll just return ending the routine.
+			}
+		}
+	}()
+
+	// We return the channel and no error.
+	return ch, nil
+}
+
 // Comment returns CommentResolver implementation.
 func (r *Resolver) Comment() CommentResolver { return &commentResolver{r} }
 
@@ -129,6 +183,10 @@ func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
+// Subscription returns SubscriptionResolver implementation.
+func (r *Resolver) Subscription() SubscriptionResolver { return &subscriptionResolver{r} }
+
 type commentResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
+type subscriptionResolver struct{ *Resolver }
