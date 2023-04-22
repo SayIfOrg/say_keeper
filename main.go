@@ -43,6 +43,9 @@ func main() {
 
 	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{DB: db}}))
 
+	// Add ServerSentEvent transport (order should be before transport.POST)
+	srv.AddTransport(transport.SSE{})
+
 	// Some default http behaviors
 	srv.AddTransport(transport.Options{})
 	srv.AddTransport(transport.GET{})
