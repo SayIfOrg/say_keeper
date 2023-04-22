@@ -28,3 +28,22 @@ func CheckAllowedOrigin(allowedOrigins []string, sameOrigin bool) func(r *http.R
 		return false
 	}
 }
+
+//CorsMiddleware expects allowedOrigin in format like "https://some.me"
+func CorsMiddleware(next http.Handler, allowedOrigin string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Set the CORS headers
+		w.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		// If this is a preflight request, send the headers and return
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		// Call the next middleware/handler in the chain
+		next.ServeHTTP(w, r)
+	})
+}

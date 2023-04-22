@@ -68,7 +68,7 @@ func main() {
 	})
 
 	http.Handle("/graphiql/", playground.Handler("GraphQL playground", "/graphql/"))
-	http.Handle("/graphql/", srv)
+	http.Handle("/graphql/", utils.CorsMiddleware(srv, os.Getenv("ALLOWED_CORE_ORIGIN")))
 
 	log.Printf("connect to http://localhost:%s/graphiql/ for GraphQL playground", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
