@@ -6,13 +6,12 @@ package graph
 
 import (
 	"context"
-	"fmt"
-	"strconv"
-	"time"
-
+	"github.com/SayIfOrg/say_keeper/commenting"
 	"github.com/SayIfOrg/say_keeper/graph/gmodel"
 	"github.com/SayIfOrg/say_keeper/models"
 	"github.com/SayIfOrg/say_keeper/utils"
+	"log"
+	"strconv"
 )
 
 // ReplyTo is the resolver for the replyTo field.
@@ -62,7 +61,7 @@ func (r *commentResolver) Replies(_ context.Context, obj *gmodel.Comment) ([]*gm
 }
 
 // CreateComment is the resolver for the CreateComment field.
-func (r *mutationResolver) CreateComment(_ context.Context, comment gmodel.NewComment) (*gmodel.Comment, error) {
+func (r *mutationResolver) CreateComment(ctx context.Context, comment gmodel.NewComment) (*gmodel.Comment, error) {
 	userID, _ := strconv.Atoi(comment.UserID)
 	newComment := &models.Comment{
 		UserID:    uint(userID),
@@ -80,6 +79,12 @@ func (r *mutationResolver) CreateComment(_ context.Context, comment gmodel.NewCo
 		ReplyToID: utils.RUintToString(newComment.ReplyToId),
 		Content:   comment.Content,
 		Agent:     comment.Agent}
+	// publish the posted comment to be used by subscription (or by ...)
+	err := commenting.PublishComment(r.RDB, ctx, gNewContent)
+	if err != nil {
+		// TODO proper handle this case
+		log.Println("error in publishing the comment", err)
+	}
 	return gNewContent, nil
 }
 
@@ -124,54 +129,10 @@ func (r *queryResolver) Comments(_ context.Context) ([]*gmodel.Comment, error) {
 
 // LatestComment is the resolver for the latestComment field.
 func (r *subscriptionResolver) LatestComment(ctx context.Context) (<-chan *gmodel.Comment, error) {
-	// This is dummy for now
-	rdb := r.RDB
 	ch := make(chan *gmodel.Comment)
 
-	// TODO handle channels in a central place outside of `schema.resolvers.go`
-	go func() {
-		pubsub := rdb.Subscribe(ctx, "mychannel1")
-		defer func() {
-			err := pubsub.Close()
-			if err != nil {
-				panic(err)
-			}
-			fmt.Println("sub closed")
-		}()
+	go commenting.SubscribeComment(ctx, r.RDB, ch)
 
-		for {
-			msg, err := pubsub.ReceiveMessage(ctx)
-			if err != nil {
-				panic(err)
-			}
-			fmt.Println(msg.Channel, msg.Payload)
-
-			currentTime := time.Now()
-			t := &gmodel.Comment{
-				ID:        strconv.Itoa(int(currentTime.Unix())),
-				UserID:    "5",
-				ReplyToID: nil,
-				//ReplyTo:   nil,
-				//Replies:   nil,
-				Content: msg.Payload,
-				Agent:   msg.Channel,
-			}
-
-			// The channel may have gotten closed due to the client disconnecting.
-			// To not have our Goroutine block or panic, we do the send in a select block.
-			// This will jump to the default case if the channel is closed.
-			select {
-			case ch <- t: // This is the actual send.
-				// Our message went through, do nothing
-			default: // This is run when our send does not work.
-				fmt.Println("Channel closed.")
-				// You can handle any deregistration of the channel here.
-				return // We'll just return ending the routine.
-			}
-		}
-	}()
-
-	// We return the channel and no error.
 	return ch, nil
 }
 
