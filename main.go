@@ -10,6 +10,7 @@ import (
 	"github.com/SayIfOrg/say_keeper/models"
 	"github.com/SayIfOrg/say_keeper/utils"
 	"github.com/gorilla/websocket"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"log"
@@ -23,7 +24,11 @@ const defaultPort = "8080"
 
 func main() {
 	// Collect prerequisites
+	// gorm postgres connection string
 	dsn := "host=localhost user=postgres password=password dbname=keeper port=5432 sslmode=disable"
+	// redis connection string "redis://<user>:<pass>@localhost:6379/<db>"
+	redisURL := "redis://@172.19.97.252:6378/5"
+	// application port
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = defaultPort
@@ -41,7 +46,14 @@ func main() {
 		panic("failed to migrate database")
 	}
 
-	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{DB: db}}))
+	// Initiate Redis connection
+	opt, err := redis.ParseURL(redisURL)
+	if err != nil {
+		panic(err)
+	}
+	rdb := redis.NewClient(opt)
+
+	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{DB: db, RDB: rdb}}))
 
 	// Add ServerSentEvent transport (order should be before transport.POST)
 	srv.AddTransport(transport.SSE{})

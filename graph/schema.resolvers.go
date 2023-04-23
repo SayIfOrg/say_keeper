@@ -7,7 +7,6 @@ package graph
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"strconv"
 	"time"
 
@@ -124,26 +123,28 @@ func (r *queryResolver) Comments(_ context.Context) ([]*gmodel.Comment, error) {
 }
 
 // LatestComment is the resolver for the latestComment field.
-func (r *subscriptionResolver) LatestComment(_ context.Context) (<-chan *gmodel.Comment, error) {
+func (r *subscriptionResolver) LatestComment(ctx context.Context) (<-chan *gmodel.Comment, error) {
 	// This is dummy for now
-
+	rdb := r.RDB
 	ch := make(chan *gmodel.Comment)
-
-	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	rand.Seed(time.Now().UnixNano())
 
 	// TODO handle channels in a central place outside of `schema.resolvers.go`
 	go func() {
-		for {
-			time.Sleep(5 * time.Second)
-			fmt.Println("ping")
-
-			n := rand.Intn(100) + 1
-			b := make([]byte, n)
-			for i := range b {
-				randIndex := rand.Intn(len(letters))
-				b[i] = letters[randIndex]
+		pubsub := rdb.Subscribe(ctx, "mychannel1")
+		defer func() {
+			err := pubsub.Close()
+			if err != nil {
+				panic(err)
 			}
+			fmt.Println("sub closed")
+		}()
+
+		for {
+			msg, err := pubsub.ReceiveMessage(ctx)
+			if err != nil {
+				panic(err)
+			}
+			fmt.Println(msg.Channel, msg.Payload)
 
 			currentTime := time.Now()
 			t := &gmodel.Comment{
@@ -152,8 +153,8 @@ func (r *subscriptionResolver) LatestComment(_ context.Context) (<-chan *gmodel.
 				ReplyToID: nil,
 				//ReplyTo:   nil,
 				//Replies:   nil,
-				Content: string(b),
-				Agent:   "telegram",
+				Content: msg.Payload,
+				Agent:   msg.Channel,
 			}
 
 			// The channel may have gotten closed due to the client disconnecting.

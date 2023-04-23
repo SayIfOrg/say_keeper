@@ -4,6 +4,7 @@ package graph
 // go generate ./...
 
 import (
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
@@ -12,5 +13,6 @@ import (
 // It serves as dependency injection for your app, add any dependencies you require here.
 
 type Resolver struct {
-	DB *gorm.DB
+	DB  *gorm.DB
+	RDB *redis.Client
 }
