@@ -129,11 +129,11 @@ func (r *queryResolver) Comments(_ context.Context) ([]*gmodel.Comment, error) {
 
 // LatestComment is the resolver for the latestComment field.
 func (r *subscriptionResolver) LatestComment(ctx context.Context) (<-chan *gmodel.Comment, error) {
-	ch := make(chan *gmodel.Comment)
-
-	go commenting.SubscribeComment(ctx, r.RDB, ch)
-
-	return ch, nil
+	commentAddedChan := make(chan *gmodel.Comment)
+	r.Subs.Mu.Lock()
+	r.Subs.Subs = append(r.Subs.Subs, commentAddedChan)
+	r.Subs.Mu.Unlock()
+	return commentAddedChan, nil
 }
 
 // Comment returns CommentResolver implementation.

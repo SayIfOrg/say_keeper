@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/99designs/gqlgen/graphql/handler/lru"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/SayIfOrg/say_keeper/commenting"
 	"github.com/SayIfOrg/say_keeper/graph"
 	"github.com/SayIfOrg/say_keeper/models"
 	"github.com/SayIfOrg/say_keeper/utils"
@@ -53,7 +55,14 @@ func main() {
 	}
 	rdb := redis.NewClient(opt)
 
-	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{DB: db, RDB: rdb}}))
+	ctx := context.Background()
+
+	var subs = new(commenting.Subs)
+	// Initiate Redis pub/sub to the comments chan
+	go commenting.SubscribeComment(ctx, rdb, subs)
+
+	srv := handler.New(graph.NewExecutableSchema(
+		graph.Config{Resolvers: &graph.Resolver{DB: db, RDB: rdb, Subs: subs}}))
 
 	// Add ServerSentEvent transport (order should be before transport.POST)
 	srv.AddTransport(transport.SSE{})
