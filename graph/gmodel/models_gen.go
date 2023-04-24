@@ -4,7 +4,7 @@ package gmodel
 
 type NewComment struct {
 	UserID    string  `json:"userID"`
-	ReplyToID *string `json:"replyToID"`
+	ReplyToID *string `json:"replyToID,omitempty"`
 	Content   string  `json:"content"`
 	Agent     string  `json:"agent"`
 }
