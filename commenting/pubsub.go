@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/SayIfOrg/say_keeper/graph/gmodel"
+	"github.com/SayIfOrg/say_keeper/utils"
 	"github.com/redis/go-redis/v9"
 	"log"
 	"sync"
@@ -45,6 +46,7 @@ func SubscribeComment(ctx context.Context, rdb *redis.Client, subs *Subs) {
 		}
 
 		subs.Mu.Lock()
+		var invalidSubsIndex []int
 		for i, ch := range subs.Subs {
 			// The channel may have gotten closed due to the client disconnecting.
 			// To not have our Goroutine block or panic, we do the send in a select block.
@@ -54,11 +56,12 @@ func SubscribeComment(ctx context.Context, rdb *redis.Client, subs *Subs) {
 				// Our message went through, do nothing
 			default: // This is run when our send does not work.
 				log.Println("a closed graph chan detected")
-				//remove the closed graphql channel from the list
-				subs.Subs = append(subs.Subs[:i], subs.Subs[i+1:]...)
+				invalidSubsIndex = append(invalidSubsIndex, i)
 				// You can handle any deregistration of the channel here.
 			}
 		}
+		//remove the closed graphql channel from the list
+		subs.Subs = utils.RemoveByIndexes(subs.Subs, invalidSubsIndex)
 		subs.Mu.Unlock()
 	}
 }
