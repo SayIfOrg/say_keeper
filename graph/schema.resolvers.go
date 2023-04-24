@@ -16,7 +16,7 @@ import (
 )
 
 // ReplyTo is the resolver for the replyTo field.
-func (r *commentResolver) ReplyTo(_ context.Context, obj *gmodel.Comment) (*gmodel.Comment, error) {
+func (r *commentResolver) ReplyTo(ctx context.Context, obj *gmodel.Comment) (*gmodel.Comment, error) {
 	if obj.ReplyToID == nil {
 		return nil, nil
 	}
@@ -25,7 +25,7 @@ func (r *commentResolver) ReplyTo(_ context.Context, obj *gmodel.Comment) (*gmod
 		return nil, err
 	}
 	var relatedComment = models.Comment{}
-	dbc := r.DB.First(&relatedComment, uint(ReplyToID))
+	dbc := r.DB.WithContext(ctx).First(&relatedComment, uint(ReplyToID))
 	if dbc.Error != nil {
 		return nil, dbc.Error
 	}
@@ -40,10 +40,10 @@ func (r *commentResolver) ReplyTo(_ context.Context, obj *gmodel.Comment) (*gmod
 }
 
 // Replies is the resolver for the replies field.
-func (r *commentResolver) Replies(_ context.Context, obj *gmodel.Comment) ([]*gmodel.Comment, error) {
+func (r *commentResolver) Replies(ctx context.Context, obj *gmodel.Comment) ([]*gmodel.Comment, error) {
 	var replies []models.Comment
 	referenceID := utils.RStringToUint(&obj.ID)
-	dbc := r.DB.Where(&models.Comment{ReplyToId: referenceID}).Find(&replies)
+	dbc := r.DB.WithContext(ctx).Where(&models.Comment{ReplyToId: referenceID}).Find(&replies)
 	if dbc.Error != nil {
 		return nil, dbc.Error
 	}
@@ -70,7 +70,7 @@ func (r *mutationResolver) CreateComment(ctx context.Context, comment gmodel.New
 		Content:   comment.Content,
 		Agent:     comment.Agent,
 	}
-	dbr := r.DB.Create(newComment)
+	dbr := r.DB.WithContext(ctx).Create(newComment)
 	if dbr.Error != nil {
 		return nil, dbr.Error
 	}
@@ -90,9 +90,9 @@ func (r *mutationResolver) CreateComment(ctx context.Context, comment gmodel.New
 }
 
 // Users is the resolver for the users field.
-func (r *queryResolver) Users(_ context.Context) ([]*gmodel.User, error) {
+func (r *queryResolver) Users(ctx context.Context) ([]*gmodel.User, error) {
 	var users []*models.User
-	dbc := r.DB.Find(&users)
+	dbc := r.DB.WithContext(ctx).Find(&users)
 	if dbc.Error != nil {
 		return nil, dbc.Error
 	}
@@ -108,9 +108,9 @@ func (r *queryResolver) Users(_ context.Context) ([]*gmodel.User, error) {
 }
 
 // Comments is the resolver for the comments field.
-func (r *queryResolver) Comments(_ context.Context) ([]*gmodel.Comment, error) {
+func (r *queryResolver) Comments(ctx context.Context) ([]*gmodel.Comment, error) {
 	var comments []*models.Comment
-	dbr := r.DB.Find(&comments)
+	dbr := r.DB.WithContext(ctx).Find(&comments)
 	if dbr.Error != nil {
 		return nil, dbr.Error
 	}
