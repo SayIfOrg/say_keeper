@@ -6,6 +6,7 @@ package graph
 
 import (
 	"context"
+	"github.com/SayIfOrg/say_keeper/dataloader"
 	"log"
 	"strconv"
 
@@ -20,23 +21,7 @@ func (r *commentResolver) ReplyTo(ctx context.Context, obj *gmodel.Comment) (*gm
 	if obj.ReplyToID == nil {
 		return nil, nil
 	}
-	ReplyToID, err := strconv.ParseUint(*obj.ReplyToID, 10, 0)
-	if err != nil {
-		return nil, err
-	}
-	var relatedComment = models.Comment{}
-	dbc := r.DB.WithContext(ctx).First(&relatedComment, uint(ReplyToID))
-	if dbc.Error != nil {
-		return nil, dbc.Error
-	}
-	gRelatedComment := &gmodel.Comment{
-		ID:        strconv.Itoa(int(relatedComment.ID)),
-		UserID:    strconv.Itoa(int(relatedComment.UserID)),
-		ReplyToID: utils.RUintToString(relatedComment.ReplyToId),
-		Content:   relatedComment.Content,
-		Agent:     relatedComment.Agent,
-	}
-	return gRelatedComment, err
+	return dataloader.For(ctx).GetComment(ctx, *obj.ReplyToID)
 }
 
 // Replies is the resolver for the replies field.
@@ -110,7 +95,7 @@ func (r *queryResolver) Users(ctx context.Context) ([]*gmodel.User, error) {
 // Comments is the resolver for the comments field.
 func (r *queryResolver) Comments(ctx context.Context) ([]*gmodel.Comment, error) {
 	var comments []*models.Comment
-	dbr := r.DB.WithContext(ctx).Find(&comments)
+	dbr := r.DB.WithContext(ctx).Limit(100).Find(&comments)
 	if dbr.Error != nil {
 		return nil, dbr.Error
 	}

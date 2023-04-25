@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/99designs/gqlgen v0.17.30
 	github.com/gorilla/websocket v1.5.0
+	github.com/graph-gophers/dataloader v5.0.0+incompatible
 	github.com/redis/go-redis/v9 v9.0.3
 	github.com/vektah/gqlparser/v2 v2.5.1
 	gorm.io/driver/postgres v1.5.0
@@ -23,6 +24,7 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
+	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/urfave/cli/v2 v2.25.1 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect

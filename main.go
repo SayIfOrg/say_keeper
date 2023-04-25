@@ -8,6 +8,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/SayIfOrg/say_keeper/commenting"
+	"github.com/SayIfOrg/say_keeper/dataloader"
 	"github.com/SayIfOrg/say_keeper/graph"
 	"github.com/SayIfOrg/say_keeper/models"
 	"github.com/SayIfOrg/say_keeper/utils"
@@ -88,8 +89,12 @@ func main() {
 		KeepAlivePingInterval: 10 * time.Second,
 	})
 
+	// initiate data loaders
+	loaders := dataloader.NewLoaders(db)
+	dataloaderSrv := dataloader.Middleware(loaders, srv)
+
 	http.Handle("/graphiql/", playground.Handler("GraphQL playground", "/graphql/"))
-	http.Handle("/graphql/", utils.CorsMiddleware(srv, os.Getenv("ALLOWED_CORE_ORIGIN")))
+	http.Handle("/graphql/", utils.CorsMiddleware(dataloaderSrv, os.Getenv("ALLOWED_CORE_ORIGIN")))
 
 	log.Printf("connect to http://localhost:%s/graphiql/ for GraphQL playground", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
