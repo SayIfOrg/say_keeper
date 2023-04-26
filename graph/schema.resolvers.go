@@ -6,7 +6,7 @@ package graph
 
 import (
 	"context"
-	"github.com/SayIfOrg/say_keeper/dataloader"
+	"github.com/SayIfOrg/say_keeper/graph/dataloader"
 	"log"
 	"strconv"
 
