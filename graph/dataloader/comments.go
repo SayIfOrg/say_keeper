@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/SayIfOrg/say_keeper/graph/gmodel"
 	"github.com/SayIfOrg/say_keeper/models"
-	"github.com/SayIfOrg/say_keeper/utils"
 	"github.com/graph-gophers/dataloader"
 	"gorm.io/gorm"
 	"strconv"
@@ -41,13 +40,7 @@ func (u *CommentReader) LoadComments(ctx context.Context, keys dataloader.Keys) 
 	}
 	commentById := map[string]*gmodel.Comment{}
 	for _, comment := range comments {
-		commentById[strconv.Itoa(int(comment.ID))] = &gmodel.Comment{
-			ID:        strconv.Itoa(int(comment.ID)),
-			UserID:    strconv.Itoa(int(comment.UserID)),
-			ReplyToID: utils.RUintToString(comment.ReplyToId),
-			Content:   comment.Content,
-			Agent:     comment.Agent,
-		}
+		commentById[strconv.Itoa(int(comment.ID))] = gmodel.FromDBComment(&comment)
 	}
 
 	// return comments in the same order requested

@@ -6,6 +6,7 @@ package graph
 
 import (
 	"context"
+	"github.com/SayIfOrg/say_keeper/dal"
 	"github.com/SayIfOrg/say_keeper/graph/dataloader"
 	"log"
 	"strconv"
@@ -34,13 +35,7 @@ func (r *commentResolver) Replies(ctx context.Context, obj *gmodel.Comment) ([]*
 	}
 	var gReplies []*gmodel.Comment
 	for _, reply := range replies {
-		gReply := &gmodel.Comment{
-			ID:        strconv.Itoa(int(reply.ID)),
-			UserID:    strconv.Itoa(int(reply.UserID)),
-			ReplyToID: utils.RUintToString(reply.ReplyToId),
-			Content:   reply.Content,
-			Agent:     reply.Agent,
-		}
+		gReply := gmodel.FromDBComment(&reply)
 		gReplies = append(gReplies, gReply)
 	}
 	return gReplies, nil
@@ -48,25 +43,24 @@ func (r *commentResolver) Replies(ctx context.Context, obj *gmodel.Comment) ([]*
 
 // CreateComment is the resolver for the CreateComment field.
 func (r *mutationResolver) CreateComment(ctx context.Context, comment gmodel.NewComment) (*gmodel.Comment, error) {
-	userID, _ := strconv.Atoi(comment.UserID)
-	newComment := &models.Comment{
-		UserID:    uint(userID),
-		ReplyToId: utils.RStringToUint(comment.ReplyToID),
-		Content:   comment.Content,
-		Agent:     comment.Agent,
+	userID, err := strconv.Atoi(comment.UserID)
+	if err != nil {
+		return nil, err
 	}
-	dbr := r.DB.WithContext(ctx).Create(newComment)
-	if dbr.Error != nil {
-		return nil, dbr.Error
+	newComment, err := dal.CreateComment(
+		&ctx,
+		r.DB,
+		uint(userID),
+		utils.RStringToUint(comment.ReplyToID),
+		comment.Content,
+		comment.Agent,
+	)
+	if err != nil {
+		return nil, err
 	}
-	gNewContent := &gmodel.Comment{
-		ID:        strconv.Itoa(int(newComment.ID)),
-		UserID:    strconv.Itoa(int(newComment.UserID)),
-		ReplyToID: utils.RUintToString(newComment.ReplyToId),
-		Content:   comment.Content,
-		Agent:     comment.Agent}
+	gNewContent := gmodel.FromDBComment(newComment)
 	// publish the posted comment to be used by subscription (or by ...)
-	err := commenting.PublishComment(r.RDB, ctx, gNewContent)
+	err = commenting.PublishComment(r.RDB, ctx, gNewContent)
 	if err != nil {
 		// TODO proper handle this case
 		log.Println("error in publishing the comment", err)
@@ -83,10 +77,7 @@ func (r *queryResolver) Users(ctx context.Context) ([]*gmodel.User, error) {
 	}
 	var gUsers []*gmodel.User
 	for _, user := range users {
-		gUser := &gmodel.User{
-			ID:   strconv.Itoa(int(user.ID)),
-			Name: user.Name,
-		}
+		gUser := gmodel.FromDBUser(user)
 		gUsers = append(gUsers, gUser)
 	}
 	return gUsers, nil
@@ -101,13 +92,7 @@ func (r *queryResolver) Comments(ctx context.Context) ([]*gmodel.Comment, error)
 	}
 	var gComments []*gmodel.Comment
 	for _, comment := range comments {
-		gComment := &gmodel.Comment{
-			ID:        strconv.Itoa(int(comment.ID)),
-			UserID:    strconv.Itoa(int(comment.UserID)),
-			ReplyToID: utils.RUintToString(comment.ReplyToId),
-			Content:   comment.Content,
-			Agent:     comment.Agent,
-		}
+		gComment := gmodel.FromDBComment(comment)
 		gComments = append(gComments, gComment)
 	}
 	return gComments, nil
