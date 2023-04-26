@@ -2,28 +2,34 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/99designs/gqlgen/graphql/handler/lru"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/SayIfOrg/say_keeper/commenting"
+	"github.com/SayIfOrg/say_keeper/gateway/grpc_gate"
 	"github.com/SayIfOrg/say_keeper/graph"
 	"github.com/SayIfOrg/say_keeper/graph/dataloader"
 	"github.com/SayIfOrg/say_keeper/models"
 	"github.com/SayIfOrg/say_keeper/utils"
+	pb "github.com/SayIfOrg/say_protos/packages/go"
 	"github.com/gorilla/websocket"
 	"github.com/redis/go-redis/v9"
+	"google.golang.org/grpc"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 )
 
-const defaultPort = "8080"
+const defaultHttpPort = "8080"
+const defaultGrpcPort = "5050"
 
 func main() {
 	// Collect prerequisites
@@ -31,10 +37,15 @@ func main() {
 	dsn := "host=localhost user=postgres password=password dbname=keeper port=5432 sslmode=disable"
 	// redis connection string "redis://<user>:<pass>@localhost:6379/<db>"
 	redisURL := "redis://@172.19.97.252:6378/5"
-	// application port
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = defaultPort
+	// application http port
+	httpPort := os.Getenv("PORT")
+	if httpPort == "" {
+		httpPort = defaultHttpPort
+	}
+	// application grpc port
+	grpcPort := os.Getenv("PORT")
+	if grpcPort == "" {
+		grpcPort = defaultGrpcPort
 	}
 
 	// Initiate Gorm connection
@@ -96,6 +107,21 @@ func main() {
 	http.Handle("/graphiql/", playground.Handler("GraphQL playground", "/graphql/"))
 	http.Handle("/graphql/", utils.CorsMiddleware(dataloaderSrv, os.Getenv("ALLOWED_CORE_ORIGIN")))
 
-	log.Printf("connect to http://localhost:%s/graphiql/ for GraphQL playground", port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	log.Printf("connect to http://localhost:%s/graphiql/ for GraphQL playground", httpPort)
+	go func() { log.Fatal(http.ListenAndServe(":"+httpPort, nil)) }()
+
+	// grpc server
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", grpcPort))
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+	grpcServer := grpc.NewServer()
+	pb.RegisterCommentingServer(grpcServer, &grpc_gate.CommentingServer{})
+
+	log.Printf("grpc server listening at %v", lis.Addr())
+	go func() {
+		log.Fatal(grpcServer.Serve(lis))
+	}()
+
+	select {}
 }
