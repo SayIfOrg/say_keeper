@@ -12,6 +12,7 @@ import (
 	"github.com/SayIfOrg/say_keeper/gateway/grpc_gate"
 	"github.com/SayIfOrg/say_keeper/graph"
 	"github.com/SayIfOrg/say_keeper/graph/dataloader"
+	"github.com/SayIfOrg/say_keeper/graph/gmodel"
 	"github.com/SayIfOrg/say_keeper/models"
 	"github.com/SayIfOrg/say_keeper/utils"
 	pb "github.com/SayIfOrg/say_protos/packages/go"
@@ -69,9 +70,9 @@ func main() {
 
 	ctx := context.Background()
 
-	var subs = new(commenting.Subs)
+	var subs = new(commenting.Subs[gmodel.Comment])
 	// Initiate Redis pub/sub to the comments chan
-	go commenting.SubscribeComment(ctx, rdb, subs)
+	go commenting.SubscribeComment[gmodel.Comment](ctx, rdb, subs, gmodel.UnmarshalComment)
 
 	srv := handler.New(graph.NewExecutableSchema(
 		graph.Config{Resolvers: &graph.Resolver{DB: db, RDB: rdb, Subs: subs}}))
@@ -116,7 +117,7 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	grpcServer := grpc.NewServer()
-	pb.RegisterCommentingServer(grpcServer, &grpc_gate.CommentingServer{})
+	pb.RegisterCommentingServer(grpcServer, &grpc_gate.CommentingServer{DB: db, RDB: rdb})
 
 	log.Printf("grpc server listening at %v", lis.Addr())
 	go func() {

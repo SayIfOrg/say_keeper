@@ -2,9 +2,7 @@ package commenting
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"github.com/SayIfOrg/say_keeper/graph/gmodel"
 	"github.com/SayIfOrg/say_keeper/utils"
 	"github.com/redis/go-redis/v9"
 	"log"
@@ -12,8 +10,8 @@ import (
 )
 
 //Subs keeps track of subscribers to comments
-type Subs struct {
-	Subs []chan *gmodel.Comment
+type Subs[T interface{}] struct {
+	Subs []chan *T
 	Mu   sync.Mutex
 }
 
@@ -21,7 +19,7 @@ const rChannel string = "commentingChan"
 
 //SubscribeComment subscribes to a redis channel named `rChannel` for new comments
 // and callback the subscribers throu `Subs`
-func SubscribeComment(ctx context.Context, rdb *redis.Client, subs *Subs) {
+func SubscribeComment[T interface{}](ctx context.Context, rdb *redis.Client, subs *Subs[T], unmarshalFn func([]byte) (*T, error)) {
 	pubsub := rdb.Subscribe(ctx, rChannel)
 	defer func() {
 		err := pubsub.Close()
@@ -39,8 +37,7 @@ func SubscribeComment(ctx context.Context, rdb *redis.Client, subs *Subs) {
 		fmt.Println(msg.Channel, msg.Payload)
 
 		// Deserialize message from JSON string into object
-		receivedObj := &gmodel.Comment{}
-		err = json.Unmarshal([]byte(msg.Payload), receivedObj)
+		receivedObj, err := unmarshalFn([]byte(msg.Payload))
 		if err != nil {
 			panic(err)
 		}
@@ -67,13 +64,9 @@ func SubscribeComment(ctx context.Context, rdb *redis.Client, subs *Subs) {
 }
 
 //PublishComment publishes comment to redis channel named "rChannel"
-func PublishComment(rdb *redis.Client, ctx context.Context, comment *gmodel.Comment) error {
-	jsonBytes, err := json.Marshal(comment)
-	if err != nil {
-		panic(err)
-	}
-	jsonStr := string(jsonBytes)
-	err = rdb.Publish(ctx, rChannel, jsonStr).Err()
+func PublishComment(rdb *redis.Client, ctx context.Context, jsComment []byte) error {
+	jsonStr := string(jsComment)
+	err := rdb.Publish(ctx, rChannel, jsonStr).Err()
 	if err != nil {
 		return err
 	}

@@ -13,6 +13,7 @@ func CreateComment(
 	replyToId *uint,
 	content string,
 	agent string,
+	outerID string,
 ) (*models.Comment, error) {
 	newComment := &models.Comment{
 		UserID:    userID,
@@ -20,6 +21,7 @@ func CreateComment(
 		Content:   content,
 		Agent:     agent,
 	}
-	db.WithContext(*ctx).Create(newComment)
-	return newComment, db.Error
+	newComment.PopulateIdentifier(outerID)
+	dbc := db.WithContext(*ctx).Create(newComment)
+	return newComment, dbc.Error
 }

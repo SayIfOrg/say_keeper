@@ -6,6 +6,7 @@ package graph
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/SayIfOrg/say_keeper/dal"
 	"github.com/SayIfOrg/say_keeper/graph/dataloader"
 	"log"
@@ -53,14 +54,19 @@ func (r *mutationResolver) CreateComment(ctx context.Context, comment gmodel.New
 		uint(userID),
 		utils.RStringToUint(comment.ReplyToID),
 		comment.Content,
-		comment.Agent,
+		commenting.WebAgent,
+		"",
 	)
 	if err != nil {
 		return nil, err
 	}
 	gNewContent := gmodel.FromDBComment(newComment)
 	// publish the posted comment to be used by subscription (or by ...)
-	err = commenting.PublishComment(r.RDB, ctx, gNewContent)
+	jsonBytes, err := json.Marshal(gNewContent)
+	if err != nil {
+		panic(err)
+	}
+	err = commenting.PublishComment(r.RDB, ctx, jsonBytes)
 	if err != nil {
 		// TODO proper handle this case
 		log.Println("error in publishing the comment", err)

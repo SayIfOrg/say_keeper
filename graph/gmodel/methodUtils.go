@@ -1,6 +1,7 @@
 package gmodel
 
 import (
+	"encoding/json"
 	"github.com/SayIfOrg/say_keeper/models"
 	"github.com/SayIfOrg/say_keeper/utils"
 	"strconv"
@@ -21,4 +22,10 @@ func FromDBUser(du *models.User) *User {
 		ID:   strconv.Itoa(int(du.ID)),
 		Name: du.Name,
 	}
+}
+
+func UnmarshalComment(b []byte) (*Comment, error) {
+	obj := &Comment{}
+	err := json.Unmarshal(b, obj)
+	return obj, err
 }

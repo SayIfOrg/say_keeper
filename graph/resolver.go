@@ -5,6 +5,7 @@ package graph
 
 import (
 	"github.com/SayIfOrg/say_keeper/commenting"
+	"github.com/SayIfOrg/say_keeper/graph/gmodel"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
@@ -16,5 +17,5 @@ import (
 type Resolver struct {
 	DB   *gorm.DB
 	RDB  *redis.Client
-	Subs *commenting.Subs
+	Subs *commenting.Subs[gmodel.Comment]
 }
