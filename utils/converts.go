@@ -1,27 +1,32 @@
 package utils
 
-import "strconv"
+import (
+	"database/sql"
+	"golang.org/x/exp/constraints"
+	"strconv"
+)
 
-//RUintToString converts optional uint(*uint) to optional string(*string)
-func RUintToString(u *uint) *string {
+// SqlItptS converts NullInt64 to *string
+func SqlItptS(i sql.NullInt64) *string {
 	var result *string
-	if u != nil {
-		tmp := strconv.Itoa(int(*u))
+	result = nil
+	if i.Valid {
+		tmp := strconv.Itoa(int(i.Int64))
 		result = &tmp
 	}
 	return result
 }
 
-//RStringToUint converts optional string(*string) to optional uint(*uint)
-func RStringToUint(s *string) *uint {
-	var result *uint
-	if s != nil {
-		i, err := strconv.Atoi(*s)
+// PtStI converts nullables, *string to *int
+func PtStI[O constraints.Integer](i *string) (*O, error) {
+	var result *O
+	if i != nil {
+		i, err := strconv.Atoi(*i)
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
-		ui := uint(i)
+		ui := O(i)
 		result = &ui
 	}
-	return result
+	return result, nil
 }

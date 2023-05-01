@@ -11,7 +11,7 @@ func FromDBComment(dc *models.Comment) *Comment {
 	return &Comment{
 		ID:        strconv.Itoa(int(dc.ID)),
 		UserID:    strconv.Itoa(int(dc.UserID)),
-		ReplyToID: utils.RUintToString(dc.ReplyToId),
+		ReplyToID: utils.SqlItptS(dc.ReplyToId),
 		Content:   dc.Content,
 		Agent:     dc.Agent,
 	}

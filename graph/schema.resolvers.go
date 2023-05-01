@@ -6,16 +6,18 @@ package graph
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
-	"github.com/SayIfOrg/say_keeper/dal"
-	"github.com/SayIfOrg/say_keeper/graph/dataloader"
 	"log"
 	"strconv"
 
 	"github.com/SayIfOrg/say_keeper/commenting"
+	"github.com/SayIfOrg/say_keeper/dal"
+	"github.com/SayIfOrg/say_keeper/graph/dataloader"
 	"github.com/SayIfOrg/say_keeper/graph/gmodel"
 	"github.com/SayIfOrg/say_keeper/models"
 	"github.com/SayIfOrg/say_keeper/utils"
+	"gopkg.in/guregu/null.v4"
 )
 
 // ReplyTo is the resolver for the replyTo field.
@@ -29,7 +31,11 @@ func (r *commentResolver) ReplyTo(ctx context.Context, obj *gmodel.Comment) (*gm
 // Replies is the resolver for the replies field.
 func (r *commentResolver) Replies(ctx context.Context, obj *gmodel.Comment) ([]*gmodel.Comment, error) {
 	var replies []models.Comment
-	referenceID := utils.RStringToUint(&obj.ID)
+	var referenceID sql.NullInt64
+	err := referenceID.Scan(obj.ID)
+	if err != nil {
+		return nil, err
+	}
 	dbc := r.DB.WithContext(ctx).Where(&models.Comment{ReplyToId: referenceID}).Find(&replies)
 	if dbc.Error != nil {
 		return nil, dbc.Error
@@ -48,11 +54,15 @@ func (r *mutationResolver) CreateComment(ctx context.Context, comment gmodel.New
 	if err != nil {
 		return nil, err
 	}
+	replyToID, err := utils.PtStI[int64](comment.ReplyToID)
+	if err != nil {
+		return nil, err
+	}
 	newComment, err := dal.CreateComment(
 		&ctx,
 		r.DB,
 		uint(userID),
-		utils.RStringToUint(comment.ReplyToID),
+		null.IntFromPtr(replyToID).NullInt64,
 		comment.Content,
 		commenting.WebAgent,
 		"",

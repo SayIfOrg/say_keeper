@@ -9,7 +9,9 @@ require (
 	github.com/graph-gophers/dataloader v5.0.0+incompatible
 	github.com/redis/go-redis/v9 v9.0.3
 	github.com/vektah/gqlparser/v2 v2.5.1
+	golang.org/x/exp v0.0.0-20230425010034-47ecfdc1ba53
 	google.golang.org/grpc v1.51.0
+	gopkg.in/guregu/null.v4 v4.0.0
 	gorm.io/driver/postgres v1.5.0
 	gorm.io/gorm v1.25.0
 )

@@ -8,6 +8,7 @@ import (
 	"github.com/SayIfOrg/say_keeper/graph/gmodel"
 	pb "github.com/SayIfOrg/say_protos/packages/go"
 	"github.com/redis/go-redis/v9"
+	"gopkg.in/guregu/null.v4/zero"
 	"gorm.io/gorm"
 	"log"
 )
@@ -20,27 +21,17 @@ type CommentingServer struct {
 }
 
 func (s *CommentingServer) Post(ctx context.Context, in *pb.Comment) (*pb.Comment, error) {
-	var replyToID uint
-	var pReplyToID *uint
-	if in.GetReplyToId() != 0 {
-		replyToID = uint(in.GetReplyToId())
-		pReplyToID = &replyToID
-	}
 	comment, err := dal.CreateComment(
 		&ctx,
 		s.DB,
 		uint(in.GetUserId()),
-		pReplyToID,
+		zero.IntFrom(int64(in.GetReplyToId())).NullInt64,
 		in.Content,
 		commenting.TelegramAgent,
 		in.GetOuterIdentifier(),
 	)
 	if err != nil {
 		return nil, err
-	}
-	var dReplyToID uint64
-	if comment.ReplyToId != nil {
-		dReplyToID = uint64(*comment.ReplyToId)
 	}
 
 	gComment := gmodel.FromDBComment(comment)
@@ -56,7 +47,7 @@ func (s *CommentingServer) Post(ctx context.Context, in *pb.Comment) (*pb.Commen
 	return &pb.Comment{
 		Id:              uint64(comment.ID),
 		UserId:          uint64(comment.UserID),
-		ReplyToId:       dReplyToID,
+		ReplyToId:       uint64(comment.ReplyToId.Int64),
 		Content:         comment.Content,
 		OuterIdentifier: comment.Identifier.String,
 	}, nil

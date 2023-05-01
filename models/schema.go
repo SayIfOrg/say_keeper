@@ -4,16 +4,16 @@ import "database/sql"
 
 type User struct {
 	ID       uint
-	Name     string
+	Name     string    `gorm:"not null"`
 	Comments []Comment `gorm:"foreignKey:UserID"`
 }
 
 type Comment struct {
 	ID         uint
 	Identifier sql.NullString `gorm:"unique"`
-	UserID     uint
-	ReplyToId  *uint
+	UserID     uint           `gorm:"not null"`
+	ReplyToId  sql.NullInt64
 	Replies    []Comment `gorm:"foreignKey:ReplyToId"`
-	Content    string
-	Agent      string
+	Content    string    `gorm:"not null"`
+	Agent      string    `gorm:"not null"`
 }
