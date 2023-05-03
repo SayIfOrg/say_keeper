@@ -25,32 +25,66 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
 
-const defaultHttpPort = "8080"
-const defaultGrpcPort = "5050"
+const defaultHttpPort = 8080
+const defaultGrpcPort = 5050
+
+type Config struct {
+	// gorm postgres connection url
+	postgresConnectionUrl string
+	// redis connection string "redis://<user>:<pass>@localhost:6379/<db>"
+	redisConnectionString string
+	// application http port
+	httpPort int
+	// application grpc port
+	grpcPort int
+	// allowed origins to connect to websocket
+	allowedOrigins []string
+	// allowed core origin
+	allowedCoreOrigin string
+}
+
+func Configure() (Config, error) {
+	var config = Config{}
+	config.postgresConnectionUrl = os.Getenv("PG_DSN")
+	config.redisConnectionString = os.Getenv("REDIS_CONN_STRING")
+	httpPort := os.Getenv("HTTP_PORT")
+	if httpPort == "" {
+		config.httpPort = defaultHttpPort
+	} else {
+		port, err := strconv.Atoi(httpPort)
+		if err != nil {
+			return config, err
+		}
+		config.httpPort = port
+	}
+	grpcPort := os.Getenv("GRPC_PORT")
+	if grpcPort == "" {
+		config.grpcPort = defaultGrpcPort
+	} else {
+		port, err := strconv.Atoi(grpcPort)
+		if err != nil {
+			return config, err
+		}
+		config.grpcPort = port
+	}
+	config.allowedOrigins = strings.Split(os.Getenv("ALLOWED_ORIGINS"), ",")
+	config.allowedCoreOrigin = os.Getenv("ALLOWED_CORE_ORIGIN")
+	return config, nil
+}
 
 func main() {
 	// Collect prerequisites
-	// gorm postgres connection string
-	dsn := "host=localhost user=postgres password=password dbname=keeper port=5432 sslmode=disable"
-	// redis connection string "redis://<user>:<pass>@localhost:6379/<db>"
-	redisURL := "redis://@172.19.97.252:6378/5"
-	// application http port
-	httpPort := os.Getenv("PORT")
-	if httpPort == "" {
-		httpPort = defaultHttpPort
+	config, err := Configure()
+	if err != nil {
+		panic(err)
 	}
-	// application grpc port
-	grpcPort := os.Getenv("PORT")
-	if grpcPort == "" {
-		grpcPort = defaultGrpcPort
-	}
-
 	// Initiate Gorm connection
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(config.postgresConnectionUrl), &gorm.Config{})
 	if err != nil {
 		panic("failed to connect database")
 	}
@@ -62,7 +96,7 @@ func main() {
 	}
 
 	// Initiate Redis connection
-	opt, err := redis.ParseURL(redisURL)
+	opt, err := redis.ParseURL(config.redisConnectionString)
 	if err != nil {
 		panic(err)
 	}
@@ -94,8 +128,8 @@ func main() {
 	})
 
 	// Add websocket transport
-	allowedOrigins := strings.Split(os.Getenv("ALLOWED_ORIGINS"), ",")
-	websocketUpgrader := websocket.Upgrader{CheckOrigin: utils.CheckAllowedOrigin(allowedOrigins, true)}
+	websocketUpgrader := websocket.Upgrader{
+		CheckOrigin: utils.CheckAllowedOrigin(config.allowedOrigins, true)}
 	srv.AddTransport(&transport.Websocket{
 		Upgrader:              websocketUpgrader,
 		KeepAlivePingInterval: 10 * time.Second,
@@ -106,13 +140,13 @@ func main() {
 	dataloaderSrv := dataloader.Middleware(loaders, srv)
 
 	http.Handle("/graphiql/", playground.Handler("GraphQL playground", "/graphql/"))
-	http.Handle("/graphql/", utils.CorsMiddleware(dataloaderSrv, os.Getenv("ALLOWED_CORE_ORIGIN")))
+	http.Handle("/graphql/", utils.CorsMiddleware(dataloaderSrv, config.allowedCoreOrigin))
 
-	log.Printf("connect to http://localhost:%s/graphiql/ for GraphQL playground", httpPort)
-	go func() { log.Fatal(http.ListenAndServe(":"+httpPort, nil)) }()
+	log.Printf("connect to http://localhost:%d/graphiql/ for GraphQL playground", config.httpPort)
+	go func() { log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", config.httpPort), nil)) }()
 
 	// grpc server
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", grpcPort))
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", config.grpcPort))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
@@ -120,9 +154,7 @@ func main() {
 	pb.RegisterCommentingServer(grpcServer, &grpc_gate.CommentingServer{DB: db, RDB: rdb})
 
 	log.Printf("grpc server listening at %v", lis.Addr())
-	go func() {
-		log.Fatal(grpcServer.Serve(lis))
-	}()
+	go func() { log.Fatal(grpcServer.Serve(lis)) }()
 
 	select {}
 }
