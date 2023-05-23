@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/99designs/gqlgen v0.17.30
-	github.com/SayIfOrg/say_protos/packages/go v0.0.0-20221208175738-57aa272f9332
+	github.com/SayIfOrg/say_protos/packages/go v0.0.0-20230504084444-cd7f74268a61
 	github.com/gorilla/websocket v1.5.0
 	github.com/graph-gophers/dataloader v5.0.0+incompatible
 	github.com/redis/go-redis/v9 v9.0.3
@@ -16,7 +16,7 @@ require (
 	gorm.io/gorm v1.25.0
 )
 
-replace github.com/SayIfOrg/say_protos/packages/go => ../say_protos/packages/go
+//replace github.com/SayIfOrg/say_protos/packages/go => ../say_protos/packages/go
 
 require (
 	github.com/agnivade/levenshtein v1.1.1 // indirect
