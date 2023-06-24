@@ -19,8 +19,7 @@ func FromDBComment(dc *models.Comment) *Comment {
 
 func FromDBUser(du *models.User) *User {
 	return &User{
-		ID:   strconv.Itoa(int(du.ID)),
-		Name: du.Name,
+		ID: strconv.Itoa(int(du.ID)),
 	}
 }
 

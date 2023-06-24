@@ -3,8 +3,7 @@ package models
 import "database/sql"
 
 type User struct {
-	ID       uint
-	Name     string    `gorm:"not null"`
+	ID       uint      `gorm:"primaryKey;autoIncrement:false"`
 	Comments []Comment `gorm:"foreignKey:UserID"`
 }
 

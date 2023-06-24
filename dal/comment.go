@@ -16,6 +16,16 @@ func CreateComment(
 	agent string,
 	outerID string,
 ) (*models.Comment, error) {
+	var user = models.User{ID: userID}
+	dbc := db.First(&user)
+	if dbc.Error != nil && dbc.Error.Error() == "record not found" {
+		newUser := &models.User{ID: userID}
+		dbc = db.WithContext(*ctx).Create(newUser)
+		if dbc.Error != nil {
+			return nil, dbc.Error
+		}
+	}
+
 	newComment := &models.Comment{
 		UserID:    userID,
 		ReplyToId: replyToId,
@@ -23,6 +33,6 @@ func CreateComment(
 		Agent:     agent,
 	}
 	newComment.PopulateIdentifier(outerID)
-	dbc := db.WithContext(*ctx).Create(newComment)
+	dbc = db.WithContext(*ctx).Create(newComment)
 	return newComment, dbc.Error
 }
