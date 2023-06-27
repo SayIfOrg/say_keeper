@@ -17,7 +17,7 @@ import (
 	"github.com/SayIfOrg/say_keeper/graph/gmodel"
 	"github.com/SayIfOrg/say_keeper/models"
 	"github.com/SayIfOrg/say_keeper/utils"
-	"gopkg.in/guregu/null.v4"
+	null "gopkg.in/guregu/null.v4"
 )
 
 // ReplyTo is the resolver for the replyTo field.

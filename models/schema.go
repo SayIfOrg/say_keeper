@@ -1,6 +1,9 @@
 package models
 
-import "database/sql"
+import (
+	"database/sql"
+	"time"
+)
 
 type User struct {
 	ID       uint      `gorm:"primaryKey;autoIncrement:false"`
@@ -15,4 +18,6 @@ type Comment struct {
 	Replies    []Comment `gorm:"foreignKey:ReplyToId"`
 	Content    string    `gorm:"not null"`
 	Agent      string    `gorm:"not null"`
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }

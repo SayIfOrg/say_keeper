@@ -1,5 +1,7 @@
 # GraphQL schema
 
+scalar Time
+
 type User {
   id: ID!
   name: String!
@@ -13,11 +15,13 @@ type Comment {
     replies: [Comment]!
     content: String!
     agent: String!
+    createdAt: Time!
+    updatedAt: Time!
 }
 
 type Query {
   users: [User]!
-  comments: [Comment]!
+  comments: [Comment!]!
 }
 
 input NewComment {

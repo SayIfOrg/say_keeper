@@ -14,6 +14,8 @@ func FromDBComment(dc *models.Comment) *Comment {
 		ReplyToID: utils.SqlItptS(dc.ReplyToId),
 		Content:   dc.Content,
 		Agent:     dc.Agent,
+		CreatedAt: dc.CreatedAt,
+		UpdatedAt: dc.UpdatedAt,
 	}
 }
 
