@@ -32,7 +32,23 @@ func CreateComment(
 		Content:   content,
 		Agent:     agent,
 	}
-	newComment.PopulateIdentifier(outerID)
-	dbc = db.WithContext(*ctx).Create(newComment)
-	return newComment, dbc.Error
+	err := db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(newComment).Error; err != nil {
+			return err
+		}
+		commentPlat := &models.CommentPlat{
+			CommentID: newComment.ID,
+			TelebotID: sql.NullString{
+				String: outerID,
+				Valid:  true,
+			},
+		}
+		if err := tx.Create(commentPlat).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	return nil, err
 }

@@ -49,6 +49,6 @@ func (s *CommentingServer) Post(ctx context.Context, in *pb.Comment) (*pb.Commen
 		UserId:          uint64(comment.UserID),
 		ReplyToId:       uint64(comment.ReplyToId.Int64),
 		Content:         comment.Content,
-		OuterIdentifier: comment.Identifier.String,
+		OuterIdentifier: comment.Platform.TelebotID.String,
 	}, nil
 }

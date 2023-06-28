@@ -10,14 +10,19 @@ type User struct {
 	Comments []Comment `gorm:"foreignKey:UserID"`
 }
 
+type CommentPlat struct {
+	CommentID uint
+	TelebotID sql.NullString
+}
+
 type Comment struct {
-	ID         uint
-	Identifier sql.NullString `gorm:"unique"`
-	UserID     uint           `gorm:"not null"`
-	ReplyToId  sql.NullInt64
-	Replies    []Comment `gorm:"foreignKey:ReplyToId"`
-	Content    string    `gorm:"not null"`
-	Agent      string    `gorm:"not null"`
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	ID        uint
+	Platform  CommentPlat `gorm:"foreignKey:CommentID"`
+	UserID    uint        `gorm:"not null"`
+	ReplyToId sql.NullInt64
+	Replies   []Comment `gorm:"foreignKey:ReplyToId"`
+	Content   string    `gorm:"not null"`
+	Agent     string    `gorm:"not null"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
