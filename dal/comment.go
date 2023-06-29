@@ -50,5 +50,5 @@ func CreateComment(
 		return nil
 	})
 
-	return nil, err
+	return newComment, err
 }
