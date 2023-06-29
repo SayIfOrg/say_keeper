@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/99designs/gqlgen v0.17.30
-	github.com/SayIfOrg/say_protos/packages/go v0.0.0-20230504084444-cd7f74268a61
+	github.com/SayIfOrg/say_protos/packages/go v0.0.0-20230629164057-56a4174e39bf
 	github.com/gorilla/websocket v1.5.0
 	github.com/graph-gophers/dataloader v5.0.0+incompatible
 	github.com/redis/go-redis/v9 v9.0.3

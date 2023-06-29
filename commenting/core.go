@@ -1,4 +1,4 @@
 package commenting
 
 const WebAgent = "web"
-const TelegramAgent = "telegram"
+const TelegramAgent = "telebot"
