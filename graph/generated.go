@@ -66,7 +66,7 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		Comments func(childComplexity int) int
+		Comments func(childComplexity int, isRoot *bool) int
 		Users    func(childComplexity int) int
 	}
 
@@ -89,7 +89,7 @@ type MutationResolver interface {
 }
 type QueryResolver interface {
 	Users(ctx context.Context) ([]*gmodel.User, error)
-	Comments(ctx context.Context) ([]*gmodel.Comment, error)
+	Comments(ctx context.Context, isRoot *bool) ([]*gmodel.Comment, error)
 }
 type SubscriptionResolver interface {
 	LatestComment(ctx context.Context) (<-chan *gmodel.Comment, error)
@@ -190,7 +190,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		return e.complexity.Query.Comments(childComplexity), true
+		args, err := ec.field_Query_comments_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Comments(childComplexity, args["isRoot"].(*bool)), true
 
 	case "Query.users":
 		if e.complexity.Query.Users == nil {
@@ -352,6 +357,21 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 		}
 	}
 	args["name"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_comments_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *bool
+	if tmp, ok := rawArgs["isRoot"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isRoot"))
+		arg0, err = ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["isRoot"] = arg0
 	return args, nil
 }
 
@@ -962,7 +982,7 @@ func (ec *executionContext) _Query_comments(ctx context.Context, field graphql.C
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Comments(rctx)
+		return ec.resolvers.Query().Comments(rctx, fc.Args["isRoot"].(*bool))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1008,6 +1028,17 @@ func (ec *executionContext) fieldContext_Query_comments(ctx context.Context, fie
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Comment", field.Name)
 		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_comments_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
 	}
 	return fc, nil
 }
