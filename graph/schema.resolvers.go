@@ -100,14 +100,19 @@ func (r *queryResolver) Users(ctx context.Context) ([]*gmodel.User, error) {
 }
 
 // Comments is the resolver for the comments field.
-func (r *queryResolver) Comments(ctx context.Context, isRoot *bool) ([]*gmodel.Comment, error) {
+func (r *queryResolver) Comments(ctx context.Context, isRoot *bool, replyTo []string) ([]*gmodel.Comment, error) {
 	var comments []*models.Comment
 	dbr := r.DB.WithContext(ctx).Limit(100)
+
+	// Filtering
 	if isRoot == nil {
 	} else if *isRoot == true {
-		dbr.Where("reply_to_id is null")
+		dbr.Where("reply_to_id IS NULL")
 	} else if *isRoot == false {
-		dbr.Where("reply_to_id is not null")
+		dbr.Where("reply_to_id IS NOT NULL")
+	}
+	if replyTo != nil {
+		dbr.Where("reply_to_id IN ?", replyTo)
 	}
 	dbr = dbr.Find(&comments)
 

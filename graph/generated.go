@@ -66,7 +66,7 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		Comments func(childComplexity int, isRoot *bool) int
+		Comments func(childComplexity int, isRoot *bool, replyTo []string) int
 		Users    func(childComplexity int) int
 	}
 
@@ -89,7 +89,7 @@ type MutationResolver interface {
 }
 type QueryResolver interface {
 	Users(ctx context.Context) ([]*gmodel.User, error)
-	Comments(ctx context.Context, isRoot *bool) ([]*gmodel.Comment, error)
+	Comments(ctx context.Context, isRoot *bool, replyTo []string) ([]*gmodel.Comment, error)
 }
 type SubscriptionResolver interface {
 	LatestComment(ctx context.Context) (<-chan *gmodel.Comment, error)
@@ -195,7 +195,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Comments(childComplexity, args["isRoot"].(*bool)), true
+		return e.complexity.Query.Comments(childComplexity, args["isRoot"].(*bool), args["replyTo"].([]string)), true
 
 	case "Query.users":
 		if e.complexity.Query.Users == nil {
@@ -372,6 +372,15 @@ func (ec *executionContext) field_Query_comments_args(ctx context.Context, rawAr
 		}
 	}
 	args["isRoot"] = arg0
+	var arg1 []string
+	if tmp, ok := rawArgs["replyTo"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("replyTo"))
+		arg1, err = ec.unmarshalOID2ᚕstringᚄ(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["replyTo"] = arg1
 	return args, nil
 }
 
@@ -982,7 +991,7 @@ func (ec *executionContext) _Query_comments(ctx context.Context, field graphql.C
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Comments(rctx, fc.Args["isRoot"].(*bool))
+		return ec.resolvers.Query().Comments(rctx, fc.Args["isRoot"].(*bool), fc.Args["replyTo"].([]string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -4258,6 +4267,44 @@ func (ec *executionContext) marshalOComment2ᚖgithubᚗcomᚋSayIfOrgᚋsay_kee
 		return graphql.Null
 	}
 	return ec._Comment(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOID2ᚕstringᚄ(ctx context.Context, v interface{}) ([]string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]string, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNID2string(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOID2ᚕstringᚄ(ctx context.Context, sel ast.SelectionSet, v []string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNID2string(ctx, sel, v[i])
+	}
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) unmarshalOID2ᚖstring(ctx context.Context, v interface{}) (*string, error) {

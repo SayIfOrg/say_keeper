@@ -21,7 +21,7 @@ type Comment {
 
 type Query {
   users: [User]!
-  comments(isRoot: Boolean): [Comment!]!
+  comments(isRoot: Boolean, replyTo: [ID!]): [Comment!]!
 }
 
 input NewComment {
